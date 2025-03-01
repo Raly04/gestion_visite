@@ -1,5 +1,7 @@
 package org.example.frames;
 
+import org.example.panels.MedecinPanel;
+import org.example.panels.PatientPanel;
 import org.example.panels.UserPanel;
 
 import javax.swing.*;
@@ -28,7 +30,9 @@ public class Root extends JFrame {
         contentPanel = new JPanel(cardLayout);
 
         // Create and add tab panels
-        tabbedPane.addTab("Users", createTabIcon("user"), new UserPanel());
+        tabbedPane.addTab("Utilisateurs", createTabIcon("user"), new UserPanel());
+        tabbedPane.addTab("Médecins", createTabIcon("medecin"), new MedecinPanel());
+        tabbedPane.addTab("Patients", createTabIcon("patient"), new PatientPanel());
 
         // Style the tabbed pane
         tabbedPane.setBackground(new Color(245, 245, 245));

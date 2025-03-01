@@ -22,5 +22,7 @@
 
         <!-- Mapping files -->
         <mapping class="org.example.models.User"/>
+        <mapping class="org.example.models.Medecin"/>
+        <mapping class="org.example.models.Patient"/>
     </session-factory>
 </hibernate-configuration>
