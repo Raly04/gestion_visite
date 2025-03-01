@@ -6,6 +6,7 @@ import org.example.models.Medecin;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.List;
 import java.util.Optional;
@@ -186,6 +187,35 @@ public class MedecinPanel extends CrudPanel<Medecin , String> {
                     medecin.getNom(),
                     medecin.getPrenom(),
                     medecin.getGrade()
+            });
+        }
+    }
+
+    @Override
+    protected void filterTable() {
+        String searchText = searchField.getText().toLowerCase();
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        dataTable.setRowSorter(sorter);
+
+        if (searchText.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                    boolean matches = false;
+                    for (int i = 0; i < entry.getValueCount(); i++) {
+                        Object value = entry.getValue(i);
+                        if (value != null) {
+                            String stringValue = value.toString().toLowerCase();
+                            if (stringValue.contains(searchText)) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                    }
+                    return matches;
+                }
             });
         }
     }

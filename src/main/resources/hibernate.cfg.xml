@@ -24,5 +24,6 @@
         <mapping class="org.example.models.User"/>
         <mapping class="org.example.models.Medecin"/>
         <mapping class="org.example.models.Patient"/>
+        <mapping class="org.example.models.Visite"/>
     </session-factory>
 </hibernate-configuration>
