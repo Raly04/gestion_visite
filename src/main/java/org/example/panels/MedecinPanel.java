@@ -111,7 +111,7 @@ public class MedecinPanel extends CrudPanel<Medecin , String> {
         }
 
         // Check if medecin code already exists when adding new medecin
-        if (codeField.isEnabled()) { // Adding new medecin
+        if (codeField.isEnabled()) {
             Optional<Medecin> existingMedecin = dao.findById(code);
             if (existingMedecin.isPresent()) {
                 JOptionPane.showMessageDialog(this,
@@ -134,10 +134,18 @@ public class MedecinPanel extends CrudPanel<Medecin , String> {
             } else {
                 dao.update(medecin);
             }
+            loadData();
             showTable();
+            clearForm();
         } catch (Exception e) {
+            String message = "Erreur lors de l'enregistrement : ";
+            if (e.getMessage().contains("duplicate")) {
+                message += "Un médecin avec ce code existe déjà.";
+            } else {
+                message += e.getMessage();
+            }
             JOptionPane.showMessageDialog(this,
-                    "Erreur lors de l'enregistrement: " + e.getMessage(),
+                    message,
                     "Erreur",
                     JOptionPane.ERROR_MESSAGE);
         }
@@ -174,7 +182,20 @@ public class MedecinPanel extends CrudPanel<Medecin , String> {
 
     @Override
     protected void deleteEntity(Medecin medecin) {
-        dao.delete(medecin);
+        try {
+            dao.delete(medecin);
+        } catch (Exception e) {
+            String message = "Impossible de supprimer ce médecin : ";
+            if (e.getMessage().contains("foreign key constraint")) {
+                message += "Ce médecin a des visites associées.";
+            } else {
+                message += e.getMessage();
+            }
+            JOptionPane.showMessageDialog(this,
+                    message,
+                    "Erreur de suppression",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     @Override

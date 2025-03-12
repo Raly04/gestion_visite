@@ -6,18 +6,22 @@ import org.example.implementations.VisiteDaoIpml;
 import org.example.models.Medecin;
 import org.example.models.Patient;
 import org.example.models.Visite;
+import org.jdesktop.swingx.JXDatePicker;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class VisitePanel extends CrudPanel<Visite, Integer> {
     private JTextField idField;
     private JComboBox<Patient> patientComboBox;
     private JComboBox<Medecin> medecinComboBox;
-    private JSpinner dateSpinner;
+    private JXDatePicker datePicker;
     private JButton saveButton;
     private JButton cancelButton;
     private JButton advancedSearchButton;
@@ -69,6 +73,33 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         };
     }
 
+    private void updateComboBoxes() {
+        // Sauvegarder les sélections actuelles
+        Patient selectedPatient = (Patient) patientComboBox.getSelectedItem();
+        Medecin selectedMedecin = (Medecin) medecinComboBox.getSelectedItem();
+
+        // Mettre à jour les listes
+        patientComboBox.removeAllItems();
+        medecinComboBox.removeAllItems();
+
+        // Recharger les données depuis la base
+        for (Patient patient : patientDao.findAll()) {
+            patientComboBox.addItem(patient);
+        }
+
+        for (Medecin medecin : medecinDao.findAll()) {
+            medecinComboBox.addItem(medecin);
+        }
+
+        // Restaurer les sélections si possible
+        if (selectedPatient != null) {
+            patientComboBox.setSelectedItem(selectedPatient);
+        }
+        if (selectedMedecin != null) {
+            medecinComboBox.setSelectedItem(selectedMedecin);
+        }
+    }
+
     @Override
     protected JPanel createFormPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -80,9 +111,18 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         // Initialize components
         idField = new JTextField(20);
         idField.setEnabled(false);
-        patientComboBox = new JComboBox<>(patientDao.findAll().toArray(new Patient[0]));
-        medecinComboBox = new JComboBox<>(medecinDao.findAll().toArray(new Medecin[0]));
-        dateSpinner = new JSpinner(new SpinnerDateModel());
+        patientComboBox = new JComboBox<>();
+        medecinComboBox = new JComboBox<>();
+        updateComboBoxes();
+        datePicker = new JXDatePicker();
+        datePicker.setDate(new Date());
+        datePicker.setFormats(new SimpleDateFormat("dd/MM/yyyy"));
+        datePicker.getEditor().setEditable(false);
+        datePicker.setLocale(Locale.FRANCE); // Pour avoir le calendrier en français
+
+        // Personnalisation de l'apparence
+        datePicker.setBackground(Color.WHITE);
+        datePicker.getEditor().setPreferredSize(new Dimension(200, 35));
 
         // Add ID field (disabled)
         addFormField(formPanel, "ID:", idField, gbc, 0);
@@ -115,7 +155,7 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         // Add components
         addFormField(formPanel, "Patient:", patientComboBox, gbc, 1);
         addFormField(formPanel, "Médecin:", medecinComboBox, gbc, 2);
-        addFormField(formPanel, "Date:", dateSpinner, gbc, 3);
+        addFormField(formPanel, "Date:", datePicker, gbc, 3);
 
         // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
@@ -149,7 +189,7 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
     private void handleSave() {
         Patient patient = (Patient) patientComboBox.getSelectedItem();
         Medecin medecin = (Medecin) medecinComboBox.getSelectedItem();
-        Date date = (Date) dateSpinner.getValue();
+        Date date = datePicker.getDate();
 
         if (patient == null || medecin == null || date == null) {
             JOptionPane.showMessageDialog(this,
@@ -169,6 +209,19 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
 
         try {
             if (idField.getText().isEmpty()) {
+                // Vérifier s'il existe déjà une visite pour ce patient/médecin à cette date
+                List<Visite> existingVisites = dao.findAll();
+                for (Visite existingVisite : existingVisites) {
+                    if (existingVisite.getPatient().equals(patient) &&
+                        existingVisite.getMedecin().equals(medecin) &&
+                        isSameDay(existingVisite.getDate(), date)) {
+                        JOptionPane.showMessageDialog(this,
+                                "Une visite existe déjà pour ce patient avec ce médecin à cette date.",
+                                "Erreur",
+                                JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
                 dao.save(visite);
             } else {
                 dao.update(visite);
@@ -177,9 +230,45 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
             showTable();
             clearForm();
         } catch (Exception e) {
+            String message = "Erreur lors de l'enregistrement de la visite : ";
+            if (e.getMessage().contains("foreign key constraint")) {
+                message += "Le patient ou le médecin n'existe plus dans la base de données.";
+            } else if (e.getMessage().contains("duplicate")) {
+                message += "Cette visite existe déjà.";
+            } else {
+                message += e.getMessage();
+            }
+            JOptionPane.showMessageDialog(this, message, "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private boolean isSameDay(Date date1, Date date2) {
+        if (date1 == null || date2 == null) {
+            return false;
+        }
+        Calendar cal1 = Calendar.getInstance();
+        Calendar cal2 = Calendar.getInstance();
+        cal1.setTime(date1);
+        cal2.setTime(date2);
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
+               cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH);
+    }
+
+    @Override
+    protected void deleteEntity(Visite visite) {
+        try {
+            dao.delete(visite);
+        } catch (Exception e) {
+            String message = "Impossible de supprimer cette visite : ";
+            if (e.getMessage().contains("foreign key constraint")) {
+                message += "La visite est liée à d'autres enregistrements.";
+            } else {
+                message += e.getMessage();
+            }
             JOptionPane.showMessageDialog(this,
-                    "Erreur lors de l'enregistrement: " + e.getMessage(),
-                    "Erreur",
+                    message,
+                    "Erreur de suppression",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -256,7 +345,7 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         idField.setText("");
         patientComboBox.setSelectedIndex(0);
         medecinComboBox.setSelectedIndex(0);
-        dateSpinner.setValue(new Date());
+        datePicker.setDate(new Date());
     }
 
     @Override
@@ -264,7 +353,7 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         idField.setText(String.valueOf(visite.getId()));
         patientComboBox.setSelectedItem(visite.getPatient());
         medecinComboBox.setSelectedItem(visite.getMedecin());
-        dateSpinner.setValue(visite.getDate());
+        datePicker.setDate(visite.getDate());
     }
 
     @Override
@@ -284,16 +373,22 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
     }
 
     @Override
-    protected void deleteEntity(Visite visite) {
-        dao.delete(visite);
-    }
-
-    @Override
     protected void loadData() {
         tableModel.setRowCount(0);
         List<Visite> visites = dao.findAll();
         for (Visite visite : visites) {
             addVisiteToTable(visite);
         }
+    }
+
+    @Override
+    protected void showForm(Visite entity) {
+        // Mettre à jour les combobox avant d'afficher le formulaire
+        updateComboBoxes();
+        clearForm();
+        if (entity != null) {
+            populateForm(entity);
+        }
+        cardLayout.show(contentPanel, "FORM");
     }
 }

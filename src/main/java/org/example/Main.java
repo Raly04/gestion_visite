@@ -14,13 +14,6 @@ import java.awt.*;
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
-        FlatLightLaf.setup();
-        UIManager.put("Button.arc", 6);
-        UIManager.put("Component.arc", 6);
-        UIManager.put("Table.showHorizontalLines", true);
-        UIManager.put("Table.showVerticalLines", true);
-        UIManager.put("Table.intercellSpacing", new Dimension(1, 1));
-        UIManager.put("ScrollBar.thumb", new Color(220, 220, 220));
         // Initialize Hibernate
         HibernateUtil.getSessionFactory();
 
@@ -32,6 +25,13 @@ public class Main {
             user.setPassword("admin");
             userDao.save(user);
         }
+        FlatLightLaf.setup();
+        UIManager.put("Button.arc", 6);
+        UIManager.put("Component.arc", 6);
+        UIManager.put("Table.showHorizontalLines", true);
+        UIManager.put("Table.showVerticalLines", true);
+        UIManager.put("Table.intercellSpacing", new Dimension(1, 1));
+        UIManager.put("ScrollBar.thumb", new Color(220, 220, 220));
 
         SwingUtilities.invokeLater(Login::new);
     }
