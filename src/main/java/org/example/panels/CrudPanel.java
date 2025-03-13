@@ -214,8 +214,8 @@ public abstract class CrudPanel<T , ID> extends JPanel {
 
     protected boolean confirmDelete() {
         return JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to delete this item?",
-                "Confirm Delete",
+                "Etes vous sûr de supprimmer cette enregistrement ?",
+                "Confirmation",
                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
     }
 

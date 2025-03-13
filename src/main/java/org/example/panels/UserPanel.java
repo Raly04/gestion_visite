@@ -12,8 +12,6 @@ import java.util.List;
 public class UserPanel extends CrudPanel<User , Integer> {
     private JTextField usernameField;
     private JPasswordField passwordField;
-    private JButton editButton;    // Add these as class fields
-    private JButton deleteButton;
 
     public UserPanel() {
         super(new UserDaoImpl());

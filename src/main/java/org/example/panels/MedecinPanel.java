@@ -1,15 +1,25 @@
 package org.example.panels;
 
-import org.example.daos.MedecinDao;
-import org.example.implementations.MedecinDaoImpl;
-import org.example.models.Medecin;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.util.List;
 import java.util.Optional;
+
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.RowFilter;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+
+import org.example.implementations.MedecinDaoImpl;
+import org.example.models.Medecin;
 
 public class MedecinPanel extends CrudPanel<Medecin , String> {
     private JTextField codeField;

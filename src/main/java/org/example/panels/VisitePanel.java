@@ -64,11 +64,16 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
     protected DefaultTableModel createTableModel() {
         return new DefaultTableModel(
                 new Object[][]{},
-                new String[]{"ID", "Code Patient", "Code Médecin", "Date"}
+                new String[]{"ID", "Patient", "Médecin", "Date"}
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
+            }
+            
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                return columnIndex == 0 ? Long.class : String.class;
             }
         };
     }
@@ -123,6 +128,19 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         // Personnalisation de l'apparence
         datePicker.setBackground(Color.WHITE);
         datePicker.getEditor().setPreferredSize(new Dimension(200, 35));
+
+        // Ajouter un PropertyChangeListener pour valider la date
+        datePicker.addPropertyChangeListener("date", evt -> {
+            Date selectedDate = datePicker.getDate();
+            Date currentDate = new Date();
+            if (selectedDate != null && selectedDate.before(truncateTime(currentDate))) {
+                JOptionPane.showMessageDialog(this,
+                        "La date de visite ne peut pas être antérieure à aujourd'hui.",
+                        "Validation",
+                        JOptionPane.WARNING_MESSAGE);
+                datePicker.setDate(currentDate);
+            }
+        });
 
         // Add ID field (disabled)
         addFormField(formPanel, "ID:", idField, gbc, 0);
@@ -190,10 +208,21 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         Patient patient = (Patient) patientComboBox.getSelectedItem();
         Medecin medecin = (Medecin) medecinComboBox.getSelectedItem();
         Date date = datePicker.getDate();
+        Date currentDate = new Date();
 
+        // Validation basique
         if (patient == null || medecin == null || date == null) {
             JOptionPane.showMessageDialog(this,
                     "Le patient, le médecin et la date sont obligatoires.",
+                    "Validation",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Vérifier si la date n'est pas antérieure à aujourd'hui
+        if (date.before(truncateTime(currentDate))) {
+            JOptionPane.showMessageDialog(this,
+                    "La date de visite ne peut pas être antérieure à aujourd'hui.",
                     "Validation",
                     JOptionPane.WARNING_MESSAGE);
             return;
@@ -283,17 +312,91 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
 
-        JSpinner dateDebut = new JSpinner(new SpinnerDateModel());
-        JSpinner dateFin = new JSpinner(new SpinnerDateModel());
+        // Créer les composants
+        JComboBox<Patient> patientFilter = new JComboBox<>();
+        JComboBox<Medecin> medecinFilter = new JComboBox<>();
+        JXDatePicker dateDebut = new JXDatePicker();
+        JXDatePicker dateFin = new JXDatePicker();
 
-        addFormField(formPanel, "Date début:", dateDebut, gbc, 0);
-        addFormField(formPanel, "Date fin:", dateFin, gbc, 1);
+        // Configurer les combobox
+        patientFilter.addItem(null); // Option "Tous les patients"
+        medecinFilter.addItem(null); // Option "Tous les médecins"
+        for (Patient p : patientDao.findAll()) {
+            patientFilter.addItem(p);
+        }
+        for (Medecin m : medecinDao.findAll()) {
+            medecinFilter.addItem(m);
+        }
 
+        // Personnaliser les renderers
+        patientFilter.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                        boolean isSelected, boolean cellHasFocus) {
+                if (value == null) {
+                    value = "Tous les patients";
+                } else if (value instanceof Patient) {
+                    Patient p = (Patient) value;
+                    value = p.getCodepat() + " - " + p.getNom() + " " + p.getPrenom();
+                }
+                return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            }
+        });
+
+        medecinFilter.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                        boolean isSelected, boolean cellHasFocus) {
+                if (value == null) {
+                    value = "Tous les médecins";
+                } else if (value instanceof Medecin) {
+                    Medecin m = (Medecin) value;
+                    value = m.getCodemed() + " - " + m.getNom() + " " + m.getPrenom();
+                }
+                return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            }
+        });
+
+        // Configurer les date pickers
+        dateDebut.setFormats(new SimpleDateFormat("dd/MM/yyyy"));
+        dateFin.setFormats(new SimpleDateFormat("dd/MM/yyyy"));
+        dateDebut.setLocale(Locale.FRANCE);
+        dateFin.setLocale(Locale.FRANCE);
+
+        // Ajouter les composants
+        gbc.gridx = 0; gbc.gridy = 0;
+        formPanel.add(new JLabel("Patient:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(patientFilter, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        formPanel.add(new JLabel("Médecin:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(medecinFilter, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        formPanel.add(new JLabel("Date début:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(dateDebut, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3;
+        formPanel.add(new JLabel("Date fin:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(dateFin, gbc);
+
+        // Bouton de recherche
         JButton searchButton = new JButton("Rechercher");
         searchButton.addActionListener(e -> {
-            performAdvancedSearch(null, null, (Date) dateDebut.getValue(), (Date) dateFin.getValue());
+            performAdvancedSearch(
+                    (Medecin) medecinFilter.getSelectedItem(),
+                    (Patient) patientFilter.getSelectedItem(),
+                    dateDebut.getDate(),
+                    dateFin.getDate()
+            );
             dialog.dispose();
         });
+
+        styleButton(searchButton, new Color(25, 135, 84));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         buttonPanel.add(searchButton);
@@ -332,11 +435,18 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
     }
 
     private void addVisiteToTable(Visite visite) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE, d MMMM yyyy", Locale.FRANCE);
         tableModel.addRow(new Object[]{
                 visite.getId(),
-                visite.getPatient().getCodepat(),
-                visite.getMedecin().getCodemed(),
-                visite.getDate()
+                String.format("%s - %s %s", 
+                        visite.getPatient().getCodepat(),
+                        visite.getPatient().getNom(),
+                        visite.getPatient().getPrenom()),
+                String.format("%s - %s %s",
+                        visite.getMedecin().getCodemed(),
+                        visite.getMedecin().getNom(),
+                        visite.getMedecin().getPrenom()),
+                dateFormat.format(visite.getDate())
         });
     }
 
@@ -390,5 +500,16 @@ public class VisitePanel extends CrudPanel<Visite, Integer> {
             populateForm(entity);
         }
         cardLayout.show(contentPanel, "FORM");
+    }
+
+    // Ajouter cette méthode utilitaire pour comparer les dates sans l'heure
+    private Date truncateTime(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
     }
 }
